@@ -34,32 +34,25 @@ free -h
 
 # 4. Параметры сетевых интерфейсов и скорость соединения
 echo "=== Параметры сетевых интерфейсов ==="
-ip addr | awk '
 #!/bin/bash
 
-# Вывод информации о сетевых интерфейсах
-ip -o link show | awk '
-{
-    iface=$2
-    if (iface ~ /:/) iface=substr(iface, 1, length(iface)-1)
-    cmd="ip addr show " iface
-    cmd | getline addr
-    close(cmd)
-    split(addr, a, " ")
-    ip_addr=a[3]
+# Получаем список интерфейсов
+ip link show | awk -F: '$0 !~ /lo/ {print $2}' | while read iface; do
+    iface=$(echo $iface | xargs)  # Убираем пробелы вокруг имени интерфейса
+
+    # Получаем IP-адрес
+    ip_addr=$(ip addr show $iface | awk '/inet / {print $2}' | cut -d/ -f1)
     
-    cmd="ethtool " iface
-    cmd | getline speed
-    close(cmd)
-    split(speed, s, " ")
-    speed=s[2]
+    # Получаем MAC-адрес
+    mac_addr=$(cat /sys/class/net/$iface/address)
     
-    cmd="cat /sys/class/net/" iface "/address"
-    cmd | getline mac_addr
-    close(cmd)
+    # Получаем скорость
+    speed=$(ethtool $iface 2>/dev/null | awk -F': ' '/Speed:/ {print $2}')
     
-    printf "Интерфейс: %-10s IP: %-15s MAC: %-17s Скорость: %-10s\n", iface, ip_addr, mac_addr, speed
-}'
+    # Выводим информацию
+    printf "Интерфейс: %-10s IP: %-15s MAC: %-17s Скорость: %-10s\n" "$iface" "$ip_addr" "$mac_addr" "$speed"
+done
+'
 
 # 5. Информация о системных разделах
 print_section "Информация о файловых системах"
