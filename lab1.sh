@@ -10,7 +10,7 @@ print_section() {
 # 1. Название и версия ОС, версия и архитектура ядра Linux
 print_section "Информация о системе"
 echo "Операционная система и версия:"
-lsb_release -a
+uname -a
 
 echo "Версия ядра и архитектура:"
 uname -r
@@ -18,7 +18,15 @@ uname -m
 
 # 2. Информация о процессоре
 print_section "Информация о процессоре"
-lscpu | grep -E 'Model name:|CPU MHz:|Core(s) per socket:|Cache'
+echo "Модель процессора:"
+cat /proc/cpuinfo | grep 'model name' | uniq
+echo "Частота процессора (MHz):"
+cat /proc/cpuinfo | grep 'cpu MHz' | uniq
+echo "Количество ядер:"
+nproc
+echo "Кэш-память:"
+cat /proc/cpuinfo | grep 'cache size' | uniq
+echo ""
 
 # 3. Информация о размере оперативной памяти
 print_section "Информация о памяти"
