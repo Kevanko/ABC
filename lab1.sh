@@ -34,7 +34,6 @@ free -h
 
 # 4. Параметры сетевых интерфейсов и скорость соединения
 echo "=== Параметры сетевых интерфейсов ==="
-#!/bin/bash
 
 # Получаем список интерфейсов
 ip link show | awk -F: '$0 !~ /lo/ {print $2}' | while read iface; do
@@ -52,7 +51,6 @@ ip link show | awk -F: '$0 !~ /lo/ {print $2}' | while read iface; do
     # Выводим информацию
     printf "Интерфейс: %-10s IP: %-15s MAC: %-17s Скорость: %-10s\n" "$iface" "$ip_addr" "$mac_addr" "$speed"
 done
-'
 
 # 5. Информация о системных разделах
 print_section "Информация о файловых системах"
