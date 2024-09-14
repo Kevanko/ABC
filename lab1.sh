@@ -33,17 +33,19 @@ print_section "Информация о памяти"
 free -h
 
 # 4. Параметры сетевых интерфейсов и скорость соединения
-print_section "Информация о сетевых интерфейсах"
-for iface in $(ls /sys/class/net/); do
-    echo "Интерфейс: $iface"
-    ip addr show $iface | grep -E 'inet |link/ether'
-    if ethtool $iface > /dev/null 2>&1; then
-        echo "Скорость: $(ethtool $iface | grep Speed)"
-    else
-        echo "Информация о скорости недоступна для $iface"
-    fi
-    echo
-done
+echo "=== Параметры сетевых интерфейсов ==="
+ip addr | awk '
+/^[0-9]+:/ {
+    iface=$2; gsub(":", "", iface);
+    print "Интерфейс: " iface
+}
+/link\/ether/ {
+    print "MAC-адрес: " $2
+}
+/inet / {
+    print "IP-адрес: " $2
+    print ""
+}'
 
 # 5. Информация о системных разделах
 print_section "Информация о файловых системах"
