@@ -46,7 +46,21 @@ ip addr | awk '
     print "IP-адрес: " $2
     print ""
 }'
+# 4.1. Получение скорости соединения для каждого интерфейса
+for iface in $(ls /sys/class/net/); do
+  echo "Интерфейс: $iface"
 
+  # Используем ethtool для проводных интерфейсов
+  if command -v ethtool &> /dev/null; then
+    ethtool $iface 2>/dev/null | grep -i speed
+  fi
+
+  # Для беспроводных интерфейсов используем iwconfig
+  if command -v iwconfig &> /dev/null; then
+    iwconfig $iface 2>/dev/null | grep -i 'Bit Rate'
+  fi
+  echo ""
+done
 # 5. Информация о системных разделах
 print_section "Информация о файловых системах"
 df -h
