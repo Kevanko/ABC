@@ -10,6 +10,7 @@ print_section() {
 # 1. Название и версия ОС, версия и архитектура ядра Linux
 print_section "Информация о системе"
 echo "Операционная система и версия:"
+cat /etc/os-release | grep -E "PRETTY_NAME="
 uname -a
 
 echo "Версия ядра и архитектура:"
@@ -19,13 +20,13 @@ uname -m
 # 2. Информация о процессоре
 print_section "Информация о процессоре"
 echo "Модель процессора:"
-cat /proc/cpuinfo | grep 'model name' | uniq
+lscpu | grep 'Model name'
 echo "Частота процессора (MHz):"
-cat /proc/cpuinfo | grep 'cpu MHz' | uniq
+lscpu | grep 'Cpu MHz'
 echo "Количество ядер:"
-nproc
+lscpu | grep '^CPU(s):' #nproc
 echo "Кэш-память:"
-cat /proc/cpuinfo | grep 'cache size' | uniq
+lscpu | grep -E 'L1d|L1i|L2|L3'
 echo ""
 
 # 3. Информация о размере оперативной памяти
@@ -34,74 +35,34 @@ free -h
 
 # 4. Параметры сетевых интерфейсов и скорость соединения
 echo "=== Параметры сетевых интерфейсов ==="
-
-ChatGPT
-
-Вы сказали:
-Вывести параметры (имя интерфейса, ip/mac) и скорость сетевого соединения, напиши скрипт с использованием awk 
-ChatGPT сказал:
-ChatGPT
-Для вывода параметров сетевого интерфейса, таких как имя интерфейса, IP-адрес и MAC-адрес, а также скорости сетевого соединения с помощью awk, можно использовать комбинацию команд ip или ifconfig и awk. Вот пример скрипта, который использует ip и awk:
-
-bash
-Копировать код
-#!/bin/bash
-
-# Вывод информации о сетевых интерфейсах
-ip -o link show | awk '
-{
-    iface=$2
-    if (iface ~ /:/) iface=substr(iface, 1, length(iface)-1)
-    cmd="ip addr show " iface
-    cmd | getline addr
-    close(cmd)
-    split(addr, a, " ")
-    ip_addr=a[3]
-    
-    cmd="ethtool " iface
-    cmd | getline speed
-    close(cmd)
-    split(speed, s, " ")
-    speed=s[2]
-    
-    cmd="cat /sys/class/net/" iface "/address"
-    cmd | getline mac_addr
-    close(cmd)
-    
-    printf "Интерфейс: %-10s IP: %-15s MAC: %-17s Скорость: %-10s\n", iface, ip_addr, mac_addr, speed
+ip addr | awk '
+/^[0-9]+:/ {
+    iface=$2; gsub(":", "", iface);
+    print "Интерфейс: " iface
+}
+/link\/ether/ {
+    print "MAC-адрес: " $2
+}
+/inet / {
+    print "IP-адрес: " $2
+    print ""
 }'
-Объяснение:
-ip -o link show выводит информацию о сетевых интерфейсах.
-awk обрабатывает вывод:
-Извлекает имя интерфейса.
-Выполняет команды для получения IP-адреса, MAC-адреса и скорости интерфейса.
-Форматирует и выводит информацию.
-Не забудьте сделать скрипт исполняемым, используя команду chmod +x <имя_скрипта>, и запустите его.
 
-Также убедитесь, что у вас установлены необходимые утилиты (ip, ethtool) и у вас есть права на выполнение команд.
+# 4.1. Получение скорости соединения для каждого интерфейса
+for iface in $(ls /sys/class/net/); do
+  echo "Интерфейс: $iface"
 
+  # Используем ethtool для проводных интерфейсов
+  if command -v ethtool &> /dev/null; then
+    ethtool $iface 2>/dev/null | grep -i speed
+  fi
 
-
-
-
-
-# Получаем список интерфейсов
-ip link show | awk -F: '$0 !~ /lo/ {print $2}' | while read iface; do
-    iface=$(echo $iface | xargs)  # Убираем пробелы вокруг имени интерфейса
-
-    # Получаем IP-адрес
-    ip_addr=$(ip addr show $iface | awk '/inet / {print $2}' | cut -d/ -f1)
-    
-    # Получаем MAC-адрес
-    mac_addr=$(ip link show $iface | awk '/link\/ether/ {print $2}')
-    
-    # Получаем скорость
-    speed=$(ethtool $iface 2>/dev/null | awk -F': ' '/Speed:/ {print $2}')
-    
-    # Выводим информацию
-    printf "Интерфейс: %-10s IP: %-15s MAC: %-17s Скорость: %-10s\n" "$iface" "$ip_addr" "$mac_addr" "$speed"
+  # Для беспроводных интерфейсов используем iwconfig
+  if command -v iwconfig &> /dev/null; then
+    iwconfig $iface 2>/dev/null | grep -i 'Bit Rate'
+  fi
+  echo ""
 done
-
 # 5. Информация о системных разделах
 print_section "Информация о файловых системах"
 df -h
